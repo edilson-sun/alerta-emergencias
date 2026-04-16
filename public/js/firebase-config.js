@@ -47,7 +47,7 @@ function getHeaders(token) {
 }
 
 // ===== LOCAL BACKEND REST API (REPLACES FIRESTORE) =====
-const BACKEND_BASE = 'http://localhost:3000/api';
+const BACKEND_BASE = 'https://alerta-emergencias.onrender.com/api';
 
 async function fsGet(path, token) {
   const res = await fetch(`${BACKEND_BASE}/${path}`, { headers: getHeaders(token) });
