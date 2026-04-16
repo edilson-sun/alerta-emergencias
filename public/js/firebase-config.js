@@ -17,9 +17,9 @@ function saveSession(data) { localStorage.setItem('user_session', JSON.stringify
 function getSession() { try { return JSON.parse(localStorage.getItem('user_session')); } catch { return null; } }
 function clearSession() { localStorage.removeItem('user_session'); }
 
-function isAdminEmail(email) {
+window.isAdminEmail = (email) => {
   return email === "leandroescorza789@gmail.com";
-}
+};
 
 // --- Fetch Helpers (Backend Sync) ---
 async function fsRequest(method, path, body = null, token = null) {

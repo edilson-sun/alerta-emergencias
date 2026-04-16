@@ -165,21 +165,28 @@
     firebase.auth().signInWithRedirect(provider);
   };
 
-  // Logout
+  // Logout Unificado
   window.handleLogout = () => {
-    console.log('[Auth] Cerrando sesión...');
+    console.log('[Auth] Iniciando flujo de cierre de sesión...');
+    
+    // Llamar a limpieza específica del dashboard si existe
+    if (typeof window.dashboardCleanup === 'function') {
+      window.dashboardCleanup();
+    }
+
     // Ponemos un flag para evitar que onAuthStateChanged nos loguee de nuevo al redirigir
     sessionStorage.setItem('logout_in_progress', 'true');
     
     firebase.auth().signOut()
       .then(() => {
-        console.log('[Auth] Sesión cerrada en Firebase.');
+        console.log('[Auth] Sesión cerrada en Firebase con éxito.');
         clearSession();
         window.location.href = 'index.html';
       })
       .catch((err) => {
         console.error('[Auth] Error al cerrar sesión:', err);
         sessionStorage.removeItem('logout_in_progress');
+        alert('Error al cerrar sesión. Por favor intenta de nuevo.');
       });
   };
 

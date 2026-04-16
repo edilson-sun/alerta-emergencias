@@ -314,11 +314,10 @@
     }, 700);
   }
 
-  // ---- Logout ----
-  window.handleLogout = function () {
-    clearInterval(pollInterval);
-    clearSession();
-    window.location.href = 'index.html';
+  // ---- Teardown (called by auth.js before logout) ----
+  window.dashboardCleanup = function () {
+    console.log('[Admin] Ejecutando limpieza antes de salir...');
+    if (pollInterval) clearInterval(pollInterval);
   };
 
   // ---- Helpers ----

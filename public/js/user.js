@@ -245,15 +245,11 @@
     setStatus('success', '✅ Alerta cancelada. Puedes enviar una nueva si es necesario.');
   };
 
-  // ---- Logout ----
-  window.handleLogout = function () {
-    if (activeAlertId) {
-      if (!confirm('¿Seguro que deseas salir? Hay una alerta activa.')) return;
-    }
-    clearInterval(trackingInterval);
+  // ---- Teardown (called by auth.js before logout) ----
+  window.dashboardCleanup = function () {
+    console.log('[User] Ejecutando limpieza antes de salir...');
+    if (trackingInterval) clearInterval(trackingInterval);
     if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
-    clearSession();
-    window.location.href = 'index.html';
   };
 
   // ---- Helpers ----
