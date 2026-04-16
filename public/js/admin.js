@@ -22,6 +22,7 @@
   let currentTab = 'active';
   let knownIds = new Set();    // already-seen alert IDs
   let pollInterval = null;
+  let socket = null;
   let doneCount = 0;
 
   // ---- DOM refs ----
@@ -83,36 +84,54 @@
     }
   }
 
-  // ---- Poll for new alerts ----
-  async function pollAlerts() {
-    const alerts = await fetchAlerts();
-    const newActive = [];
+  // ---- Single Alert Processor ----
+  function processAlert(alert, isRealtime = false) {
+    if (!alert.id && !alert._id) return;
+    const id = alert._id || alert.id.toString();
+    alert._id = id; // Normalizar
 
-    // Process each alert
-    alerts.forEach(alert => {
-      if (!alert._id) return;
-      const existing = allAlerts[alert._id];
-      allAlerts[alert._id] = alert;
+    const existing = allAlerts[id];
+    allAlerts[id] = alert;
 
-      // New active alert?
-      if (alert.status === 'active' && !knownIds.has(alert._id)) {
-        knownIds.add(alert._id);
-        newActive.push(alert);
+    // Nueva alerta activa detectada (no vista antes)
+    if (alert.status === 'active' && !knownIds.has(id)) {
+      knownIds.add(id);
+      if (isRealtime) {
+        showToast(alert);
+        playAlertSound();
+        flashTitle(1);
       }
-
-      // Update marker
-      updateMarker(alert);
-    });
-
-    // Notify on new alerts
-    if (newActive.length > 0) {
-      newActive.forEach(a => showToast(a));
-      playAlertSound();
-      flashTitle(newActive.length);
     }
 
+    updateMarker(alert);
     renderLists();
     updateStats();
+  }
+
+  // ---- Initial Load & Fallback ----
+  async function pollAlerts() {
+    const alerts = await fetchAlerts();
+    alerts.forEach(a => processAlert(a, false));
+  }
+
+  // ---- Socket.io Init ----
+  function initSocket() {
+    console.log('[Socket] Conectando a:', BACKEND_URL);
+    socket = io(BACKEND_URL);
+
+    socket.on('connect', () => console.log('[Socket] Conectado exitosamente'));
+
+    socket.on('new_alert', (alert) => {
+      console.log('[Socket] Nueva alerta:', alert);
+      processAlert(alert, true);
+    });
+
+    socket.on('update_alert', (alert) => {
+      console.log('[Socket] Alerta actualizada:', alert);
+      processAlert(alert, false);
+    });
+
+    socket.on('disconnect', () => console.warn('[Socket] Desconectado, reintentando...'));
   }
 
   // ---- Map marker management ----
@@ -331,7 +350,10 @@
 
   // ---- INIT ----
   initMap();
-  pollAlerts();
-  pollInterval = setInterval(pollAlerts, 5000); // poll every 5 seconds
+  initSocket();
+  pollAlerts(); // Initial load
+  
+  // No more periodic polling! Socket.io handles it.
+  // pollInterval = setInterval(pollAlerts, 5000); 
 
 })();

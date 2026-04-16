@@ -2,8 +2,17 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PATCH"]
+  }
+});
+
 const port = process.env.PORT || 3000;
 
 // Configuración Neon (PostgreSQL)
@@ -114,7 +123,9 @@ app.post('/api/alerts', verifyToken, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active') RETURNING id`,
       [uid, email, name, phone, emergencyContact, type, typeLabel, message, lat, lng]
     );
-    res.json({ id: result.rows[0].id });
+    const alertData = result.rows[0];
+    io.emit('new_alert', alertData); // Notificar a los admins
+    res.json(alertData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -150,7 +161,9 @@ app.patch('/api/alerts/:id', verifyToken, restrictToAdmin, async (req, res) => {
     const query = `UPDATE alerts SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`;
     const result = await pool.query(query, values);
     
-    res.json(result.rows[0]);
+    const updatedAlert = result.rows[0];
+    io.emit('update_alert', updatedAlert);
+    res.json(updatedAlert);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -195,7 +208,7 @@ async function initDB() {
   }
 }
 
-app.listen(port, async () => {
-  console.log(`Backend server corriendo en http://localhost:${port}`);
+server.listen(port, async () => {
+  console.log(`Backend server con Socket.io corriendo en puerto ${port}`);
   await initDB();
 });
