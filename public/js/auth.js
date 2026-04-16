@@ -2,6 +2,7 @@
 
 (function() {
   'use strict';
+  console.log('[Auth] Cargada versión V3.0 (Clean Auth + Standard Domain)');
 
   // 1. Initialize Firebase
   if (!firebase.apps.length) {

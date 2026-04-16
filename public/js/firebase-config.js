@@ -43,11 +43,40 @@ const fsGet = (path, t) => fsRequest('GET', path, null, t);
 const fsPatch = (path, body, t) => fsRequest('PATCH', path, body, t);
 const fsPost = (path, body, t) => fsRequest('POST', path, body, t);
 
-// Compatibility stubs for code that expects Firebase object syntax
-const fsString = (v) => v;
+// --- COMPATIBILITY HELPERS (For user.js and admin.js) ---
+const fsAdd = async (path, body, t) => {
+  const res = await fsPost(path, body, t);
+  // Re-format response to look like Firebase's { name: "..." }
+  return { name: `projects/dummy/databases/dummy/documents/${path}/${res.id}` };
+};
+
+const fsString = (v) => v || "";
+const fsNumber = (v) => Number(v) || 0;
 const fsTimestamp = () => new Date().toISOString();
 
-// Auth service wrappers
+// This replaces the old parseDoc(doc) which was for Firestore fields {stringValue: ...}
+// Now it's just the plain object from PostgreSQL
+function parseDoc(doc) {
+  if (!doc) return {};
+  // If the doc already has properties, it's our clean REST response
+  return {
+    id: doc.id || doc.uid,
+    uid: doc.uid,
+    email: doc.email,
+    name: doc.name,
+    phone: doc.phone,
+    emergencyContact: doc.emergency_contact || doc.emergencyContact,
+    type: doc.type,
+    typeLabel: doc.type_label || doc.typeLabel,
+    message: doc.message,
+    lat: doc.lat,
+    lng: doc.lng,
+    status: doc.status,
+    createdAt: doc.created_at || doc.createdAt
+  };
+}
+
+// --- Auth service wrappers ---
 async function authSignIn(email, password) {
   return firebase.auth().signInWithEmailAndPassword(email, password)
     .then(async (res) => {
