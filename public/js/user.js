@@ -165,7 +165,8 @@
       };
 
       const result = await fsAdd('alerts', alertData, tok);
-      activeAlertId = result.name.split('/').pop();
+      // Usar el ID real de PostgreSQL (_realId), no el path falso de Firestore
+      activeAlertId = result._realId ? result._realId.toString() : result.name.split('/').pop();
       setAlertActive();
       setStatus('success', '🆘 ¡Alerta enviada! Seguimiento activo cada 30 segundos.');
 
@@ -221,19 +222,14 @@
   window.handleCancelAlert = async function () {
     if (!activeAlertId) return;
     if (!confirm('¿Confirmas que deseas cancelar la alerta de emergencia?')) return;
-    try {
-      const tok = await getValidToken();
-      await fsPatch(`alerts/${activeAlertId}`, {
-        status:    fsString('cancelled'),
-        updatedAt: fsTimestamp(),
-      }, tok);
-    } catch (e) {
-      console.warn('Cancel failed:', e.message);
-    }
+
+    // Guardar el ID antes de resetear por si la petición lleva tiempo
+    const idToCancel = activeAlertId;
+
+    // Resetear estado local INMEDIATAMENTE (el usuario no debe quedar atrapado)
     clearInterval(trackingInterval);
     trackingInterval = null;
     activeAlertId = null;
-    // Reset UI
     sosBtnEl.classList.remove('active');
     sosBtnEl.disabled = false;
     sosLabelEl.textContent = 'SOS';
@@ -244,6 +240,17 @@
     msgInput.disabled = false;
     document.querySelectorAll('.type-btn').forEach(b => b.disabled = false);
     setStatus('success', '✅ Alerta cancelada. Puedes enviar una nueva si es necesario.');
+
+    // Notificar al servidor (en segundo plano, no bloquea la UI)
+    try {
+      const tok = await getValidToken();
+      await fsPatch(`alerts/${idToCancel}`, {
+        status:    fsString('cancelled'),
+        updatedAt: fsTimestamp(),
+      }, tok);
+    } catch (e) {
+      console.warn('Cancel server notification failed (UI ya se reseteó):', e.message);
+    }
   };
 
   // ---- Teardown (called by auth.js before logout) ----

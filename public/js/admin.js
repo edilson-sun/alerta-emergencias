@@ -76,6 +76,7 @@
     try {
       const tok = await getToken();
       const data = await fsList('alerts', tok);
+      // data.documents es el array del backend (objetos PostgreSQL crudos)
       const docs = (data.documents || []).map(d => parseDoc(d));
       return docs;
     } catch (e) {
@@ -85,10 +86,14 @@
   }
 
   // ---- Single Alert Processor ----
-  function processAlert(alert, isRealtime = false) {
-    if (!alert.id && !alert._id) return;
-    const id = alert._id || alert.id.toString();
-    alert._id = id; // Normalizar
+  function processAlert(rawAlert, isRealtime = false) {
+    // Normalizar SIEMPRE con parseDoc para que _id sea string consistente
+    // (tanto alertas del polling como las de Socket.io)
+    const alert = (rawAlert._id) ? rawAlert : parseDoc(rawAlert);
+    if (!alert._id && !alert.id) return;
+
+    const id = (alert._id || alert.id || '').toString();
+    alert._id = id;
 
     const existing = allAlerts[id];
     allAlerts[id] = alert;

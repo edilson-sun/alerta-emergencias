@@ -43,11 +43,19 @@ const fsGet = (path, t) => fsRequest('GET', path, null, t);
 const fsPatch = (path, body, t) => fsRequest('PATCH', path, body, t);
 const fsPost = (path, body, t) => fsRequest('POST', path, body, t);
 
+// Lista documentos de una colección (usado por admin.js)
+window.fsList = async (path, t) => {
+  const res = await fsGet(path, t);
+  // El backend retorna un array directo
+  const docs = Array.isArray(res) ? res : [];
+  return { documents: docs };
+};
+
 // --- COMPATIBILITY HELPERS (For user.js and admin.js) ---
 window.fsAdd = async (path, body, t) => {
   const res = await fsPost(path, body, t);
-  // Re-format response to look like Firebase's { name: "..." }
-  return { name: `projects/dummy/databases/dummy/documents/${path}/${res.id}` };
+  // Retornar el ID real de PostgreSQL
+  return { name: `${path}/${res.id}`, _realId: res.id, _alert: res };
 };
 
 window.fsString = (v) => v || "";
@@ -58,9 +66,10 @@ window.fsTimestamp = () => new Date().toISOString();
 // Now it's just the plain object from PostgreSQL
 function parseDoc(doc) {
   if (!doc) return {};
-  // If the doc already has properties, it's our clean REST response
+  const id = (doc.id || doc.uid || '').toString();
   return {
-    id: doc.id || doc.uid,
+    _id: id,
+    id: id,
     uid: doc.uid,
     email: doc.email,
     name: doc.name,
@@ -72,7 +81,8 @@ function parseDoc(doc) {
     lat: doc.lat,
     lng: doc.lng,
     status: doc.status,
-    createdAt: doc.created_at || doc.createdAt
+    timestamp: doc.created_at || doc.createdAt || doc.timestamp,
+    updatedAt: doc.updated_at || doc.updatedAt
   };
 }
 window.parseDoc = parseDoc;
