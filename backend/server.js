@@ -117,16 +117,17 @@ app.patch('/api/users/:uid', verifyToken, async (req, res) => {
 app.post('/api/alerts', verifyToken, async (req, res) => {
   try {
     const { uid, email, name, phone, emergencyContact, type, typeLabel, message, lat, lng } = req.body;
-    
+    console.log('[API] Recibida nueva alerta de:', email);
     const result = await pool.query(
       `INSERT INTO alerts (uid, email, name, phone, emergency_contact, type, type_label, message, lat, lng, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active') RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active') RETURNING *`,
       [uid, email, name, phone, emergencyContact, type, typeLabel, message, lat, lng]
     );
     const alertData = result.rows[0];
     io.emit('new_alert', alertData); // Notificar a los admins
     res.json(alertData);
   } catch (err) {
+    console.error('[API Error]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
