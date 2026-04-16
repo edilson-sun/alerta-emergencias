@@ -2,7 +2,7 @@
 
 (function () {
   'use strict';
-  console.log('--- AlertaEmergencia User Script V3.3 ---');
+  console.log('--- AlertaEmergencia User Script V3.5 ---');
 
   // ---- Guard: require session ----
   const session = getSession();
@@ -25,6 +25,7 @@
   let trackingInterval = null;
   let userProfile = null;
   let geoWatchId = null;
+  let socket = null;
 
   // ---- DOM refs ----
   const sosBtnEl     = document.getElementById('sos-btn');
@@ -87,7 +88,6 @@
     currentLng = pos.coords.longitude;
     gpsReady = true;
     setGPSReady();
-    // If we have an active alert, push location update
     if (activeAlertId) pushLocationUpdate();
   }
 
@@ -109,7 +109,9 @@
   function setGPSReady() {
     gpsDot.className = 'gps-dot';
     gpsTextEl.textContent = 'GPS activo';
-    setStatus('success', `✅ Ubicación obtenida. Listo para enviar alerta.`);
+    if (!activeAlertId) {
+      setStatus('success', '✅ Ubicación obtenida. Listo para enviar alerta.');
+    }
   }
 
   function setGPSError(msg) {
@@ -142,33 +144,30 @@
       return;
     }
 
-    // UI: sending state
     setSendingState(true);
     setStatus('warning', '📤 Enviando alerta de emergencia...');
 
     try {
       const tok = await getValidToken();
       const alertData = {
-        uid:          fsString(session.uid),
-        email:        fsString(session.email),
-        name:         fsString(userProfile?.name || session.email.split('@')[0]),
-        phone:        fsString(userProfile?.phone || ''),
-        emergencyContact: fsString(userProfile?.emergencyContact || ''),
-        type:         fsString(selectedType),
-        typeLabel:    fsString(getTypeLabel(selectedType)),
-        message:      fsString(msgInput.value.trim()),
-        lat:          fsNumber(currentLat),
-        lng:          fsNumber(currentLng),
-        timestamp:    fsTimestamp(),
-        updatedAt:    fsTimestamp(),
-        status:       fsString('active'),
+        uid:              session.uid,
+        email:            session.email,
+        name:             userProfile?.name || session.email.split('@')[0],
+        phone:            userProfile?.phone || '',
+        emergencyContact: userProfile?.emergencyContact || '',
+        type:             selectedType,
+        typeLabel:        getTypeLabel(selectedType),
+        message:          msgInput.value.trim(),
+        lat:              currentLat,
+        lng:              currentLng,
+        status:           'active',
       };
 
       const result = await fsAdd('alerts', alertData, tok);
-      // Usar el ID real de PostgreSQL (_realId), no el path falso de Firestore
+      // Usar el ID real de PostgreSQL (_realId)
       activeAlertId = result._realId ? result._realId.toString() : result.name.split('/').pop();
       setAlertActive();
-      setStatus('success', '🆘 ¡Alerta enviada! Seguimiento activo cada 30 segundos.');
+      setStatus('success', '🆘 ¡Alerta enviada! Seguimiento GPS activo cada 30 segundos.');
 
       // Start tracking interval
       trackingInterval = setInterval(pushLocationUpdate, 30000);
@@ -183,10 +182,9 @@
     try {
       const tok = await getValidToken();
       await fsPatch(`alerts/${activeAlertId}`, {
-        lat:       fsNumber(currentLat),
-        lng:       fsNumber(currentLng),
-        updatedAt: fsTimestamp(),
-        status:    fsString('active'),
+        lat:    currentLat,
+        lng:    currentLng,
+        status: 'active',
       }, tok);
       const now = new Date();
       trackingText.textContent = `📍 Ubicación actualizada: ${now.toLocaleTimeString()}`;
@@ -218,15 +216,8 @@
     }
   }
 
-  // ---- CANCEL ALERT ----
-  window.handleCancelAlert = async function () {
-    if (!activeAlertId) return;
-    if (!confirm('¿Confirmas que deseas cancelar la alerta de emergencia?')) return;
-
-    // Guardar el ID antes de resetear por si la petición lleva tiempo
-    const idToCancel = activeAlertId;
-
-    // Resetear estado local INMEDIATAMENTE (el usuario no debe quedar atrapado)
+  // ---- Reset UI completamente ----
+  function resetAlertUI() {
     clearInterval(trackingInterval);
     trackingInterval = null;
     activeAlertId = null;
@@ -239,25 +230,115 @@
     trackingText.textContent = 'Sin seguimiento activo';
     msgInput.disabled = false;
     document.querySelectorAll('.type-btn').forEach(b => b.disabled = false);
+  }
+
+  // ---- CANCEL ALERT ----
+  window.handleCancelAlert = async function () {
+    if (!activeAlertId) return;
+    if (!confirm('¿Confirmas que deseas cancelar la alerta de emergencia?')) return;
+
+    const idToCancel = activeAlertId;
+
+    // Resetear UI INMEDIATAMENTE (el usuario no queda atrapado)
+    resetAlertUI();
     setStatus('success', '✅ Alerta cancelada. Puedes enviar una nueva si es necesario.');
 
-    // Notificar al servidor (en segundo plano, no bloquea la UI)
+    // Notificar al servidor en segundo plano
     try {
       const tok = await getValidToken();
       await fsPatch(`alerts/${idToCancel}`, {
-        status:    fsString('cancelled'),
-        updatedAt: fsTimestamp(),
+        status: 'cancelled',
       }, tok);
+      console.log('[SOS] Alerta cancelada en servidor:', idToCancel);
     } catch (e) {
-      console.warn('Cancel server notification failed (UI ya se reseteó):', e.message);
+      console.warn('[SOS] Fallo al notificar cancelación al servidor:', e.message);
     }
   };
+
+  // ---- Socket.io: escuchar actualizaciones del admin en tiempo real ----
+  function initSocket() {
+    try {
+      socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
+
+      socket.on('connect', () => {
+        console.log('[Socket User] Conectado para escuchar actualizaciones');
+      });
+
+      socket.on('update_alert', (rawAlert) => {
+        // Normalizar el objeto de la alerta
+        const alert = parseDoc(rawAlert);
+        const alertId = (alert._id || alert.id || '').toString();
+
+        // Solo nos importa nuestra alerta activa
+        if (!activeAlertId || alertId !== activeAlertId.toString()) return;
+
+        console.log('[Socket User] Actualización de mi alerta:', alert.status);
+
+        if (alert.status === 'in_progress') {
+          // Admin está yendo al rescate
+          setStatus('success', '🚨 ¡Ayuda en camino! Tu alerta está siendo atendida.');
+          showBanner('🚨 Ayuda en camino', '¡Alguien está yendo a ayudarte!', 'warning');
+        } else if (alert.status === 'attended') {
+          // Admin marcó como atendida
+          resetAlertUI();
+          setStatus('success', '✅ ¡Tu emergencia fue atendida! Gracias por usar AlertaEmergencia.');
+          showBanner('✅ Emergencia atendida', '¡Tu solicitud de ayuda fue resuelta!', 'success');
+        } else if (alert.status === 'cancelled') {
+          // Cancelada (por admin u otro)
+          resetAlertUI();
+          setStatus('success', '✅ La alerta fue cerrada.');
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.warn('[Socket User] Desconectado del servidor');
+      });
+    } catch (e) {
+      console.warn('[Socket User] No se pudo conectar Socket.io:', e.message);
+    }
+  }
+
+  // ---- Banner de notificación flotante ----
+  function showBanner(title, msg, type) {
+    // Remover banner anterior si existe
+    const existing = document.getElementById('alert-update-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.id = 'alert-update-banner';
+    const bg = type === 'success' ? 'var(--success)' : 'var(--warning)';
+    banner.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      background: ${bg}; color: #fff;
+      padding: 1rem 1.5rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      font-size: 1rem; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      animation: slideDown 0.3s ease;
+    `;
+    banner.innerHTML = `
+      <span style="font-size:1.5rem">${title.split(' ')[0]}</span>
+      <div>
+        <div>${title.split(' ').slice(1).join(' ')}</div>
+        <div style="font-weight:400;font-size:0.85rem;opacity:0.9">${msg}</div>
+      </div>
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer">✕</button>
+    `;
+    document.body.prepend(banner);
+
+    // Auto-remover después de 8 segundos
+    setTimeout(() => banner.remove(), 8000);
+
+    // Vibrar el dispositivo si está disponible
+    if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+  }
 
   // ---- Teardown (called by auth.js before logout) ----
   window.dashboardCleanup = function () {
     console.log('[User] Ejecutando limpieza antes de salir...');
     if (trackingInterval) clearInterval(trackingInterval);
     if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
+    if (socket) socket.disconnect();
   };
 
   // ---- Helpers ----
@@ -265,11 +346,19 @@
     return { fisica: 'Peligro físico', accidente: 'Accidente', medica: 'Emergencia médica', otro: 'Otro' }[type] || type;
   }
 
-  // ---- Helpers exposed (already in firebase-config.js) ----
-  // parseDoc, fsPatch, fsAdd, getSession, saveSession, refreshIdToken, etc.
+  // Agregar keyframe de animación para el banner
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideDown {
+      from { transform: translateY(-100%); }
+      to { transform: translateY(0); }
+    }
+  `;
+  document.head.appendChild(style);
 
   // ---- INIT ----
   loadProfile();
   startGPS();
+  initSocket();
 
 })();
