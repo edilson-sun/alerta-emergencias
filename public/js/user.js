@@ -2,7 +2,7 @@
 
 (function () {
   'use strict';
-  console.log('--- AlertaEmergencia User Script V3.5 ---');
+  console.log('--- AlertaEmergencia User Script V3.7 ---');
 
   // ---- Guard: require session ----
   const session = getSession();
@@ -181,10 +181,10 @@
     if (!activeAlertId || !gpsReady) return;
     try {
       const tok = await getValidToken();
+      // NO status field — don't override a potential cancel PATCH in flight
       await fsPatch(`alerts/${activeAlertId}`, {
-        lat:    currentLat,
-        lng:    currentLng,
-        status: 'active',
+        lat: currentLat,
+        lng: currentLng,
       }, tok);
       const now = new Date();
       trackingText.textContent = `📍 Ubicación actualizada: ${now.toLocaleTimeString()}`;
@@ -232,26 +232,45 @@
     document.querySelectorAll('.type-btn').forEach(b => b.disabled = false);
   }
 
-  // ---- CANCEL ALERT ----
+  // ---- CANCEL ALERT (two-tap to avoid accidental dismiss on mobile/PWA) ----
+  let _cancelPending = false;
+  let _cancelTimer = null;
+
   window.handleCancelAlert = async function () {
     if (!activeAlertId) return;
-    if (!confirm('¿Confirmas que deseas cancelar la alerta de emergencia?')) return;
+
+    if (!_cancelPending) {
+      // First tap — enter confirm state
+      _cancelPending = true;
+      cancelBtnEl.textContent = '⚠️ ¿Seguro? Toca de nuevo';
+      cancelBtnEl.style.cssText = 'background:rgba(231,76,60,0.25);border-color:#e74c3c;color:#e74c3c;' +
+                                   'border-radius:2rem;padding:0.6rem 1.2rem;cursor:pointer;transition:all .2s;width:100%;font-weight:700';
+      _cancelTimer = setTimeout(() => {
+        // Revert if no second tap
+        _cancelPending = false;
+        cancelBtnEl.textContent = '✕ Cancelar alerta activa';
+        cancelBtnEl.style.cssText = '';
+      }, 4000);
+      return;
+    }
+
+    // Second tap — confirmed, execute cancel
+    clearTimeout(_cancelTimer);
+    _cancelPending = false;
 
     const idToCancel = activeAlertId;
 
-    // Resetear UI INMEDIATAMENTE (el usuario no queda atrapado)
+    // Reset UI IMMEDIATELY so user is never stuck
     resetAlertUI();
     setStatus('success', '✅ Alerta cancelada. Puedes enviar una nueva si es necesario.');
 
-    // Notificar al servidor en segundo plano
+    // Notify server in background
     try {
       const tok = await getValidToken();
-      await fsPatch(`alerts/${idToCancel}`, {
-        status: 'cancelled',
-      }, tok);
+      await fsPatch(`alerts/${idToCancel}`, { status: 'cancelled' }, tok);
       console.log('[SOS] Alerta cancelada en servidor:', idToCancel);
     } catch (e) {
-      console.warn('[SOS] Fallo al notificar cancelación al servidor:', e.message);
+      console.warn('[SOS] Fallo al notificar cancelación:', e.message);
     }
   };
 

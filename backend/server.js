@@ -144,15 +144,22 @@ app.post('/api/alerts', verifyToken, async (req, res) => {
   }
 });
 
-// Listar alertas (admin)
+// Listar alertas (admin): activas siempre + historial de los últimos 5 días
 app.get('/api/alerts', verifyToken, restrictToAdmin, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM alerts ORDER BY created_at DESC');
+    const result = await pool.query(`
+      SELECT * FROM alerts
+      WHERE status IN ('active', 'in_progress')
+         OR created_at > NOW() - INTERVAL '5 days'
+      ORDER BY created_at DESC
+      LIMIT 200
+    `);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 app.patch('/api/alerts/:id', verifyToken, async (req, res) => {
   try {

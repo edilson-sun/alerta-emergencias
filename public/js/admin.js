@@ -279,6 +279,12 @@
       updateStats();
     } catch (e) {
       console.error('Update status failed:', e.message);
+      // Show visible error so admin knows the update didn't persist
+      const errDiv = document.createElement('div');
+      errDiv.style.cssText = 'position:fixed;bottom:80px;right:1rem;z-index:9999;background:#e74c3c;color:#fff;padding:0.75rem 1.2rem;border-radius:0.75rem;font-size:0.9rem;box-shadow:0 4px 15px rgba(0,0,0,0.4);max-width:300px';
+      errDiv.textContent = '❌ Error al actualizar estado: ' + e.message;
+      document.body.appendChild(errDiv);
+      setTimeout(() => errDiv.remove(), 6000);
     }
   };
 

@@ -115,3 +115,27 @@ async function authSignUp(email, password) {
       };
     });
 }
+
+// Refresh an expired Firebase ID token.
+// Used by getToken() and getValidToken() across all pages.
+window.refreshIdToken = async function refreshIdToken(refreshToken) {
+  // 1st choice: Firebase SDK current user (already initialized by auth.js)
+  try {
+    const currentUser = firebase.auth().currentUser;
+    if (currentUser) {
+      const newIdToken = await currentUser.getIdToken(true);
+      return { idToken: newIdToken, refreshToken: currentUser.refreshToken };
+    }
+  } catch (_) { /* fall through */ }
+
+  // Fallback: REST token endpoint
+  const url = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_CONFIG.apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`
+  });
+  if (!res.ok) throw new Error('Token refresh failed — please log in again.');
+  const data = await res.json();
+  return { idToken: data.id_token, refreshToken: data.refresh_token };
+};
