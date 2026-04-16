@@ -44,15 +44,15 @@ const fsPatch = (path, body, t) => fsRequest('PATCH', path, body, t);
 const fsPost = (path, body, t) => fsRequest('POST', path, body, t);
 
 // --- COMPATIBILITY HELPERS (For user.js and admin.js) ---
-const fsAdd = async (path, body, t) => {
+window.fsAdd = async (path, body, t) => {
   const res = await fsPost(path, body, t);
   // Re-format response to look like Firebase's { name: "..." }
   return { name: `projects/dummy/databases/dummy/documents/${path}/${res.id}` };
 };
 
-const fsString = (v) => v || "";
-const fsNumber = (v) => Number(v) || 0;
-const fsTimestamp = () => new Date().toISOString();
+window.fsString = (v) => v || "";
+window.fsNumber = (v) => Number(v) || 0;
+window.fsTimestamp = () => new Date().toISOString();
 
 // This replaces the old parseDoc(doc) which was for Firestore fields {stringValue: ...}
 // Now it's just the plain object from PostgreSQL
@@ -75,6 +75,7 @@ function parseDoc(doc) {
     createdAt: doc.created_at || doc.createdAt
   };
 }
+window.parseDoc = parseDoc;
 
 // --- Auth service wrappers ---
 async function authSignIn(email, password) {

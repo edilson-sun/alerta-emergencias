@@ -11,6 +11,13 @@
 
   // 2. Global Auth State Listener
   firebase.auth().onAuthStateChanged(async (user) => {
+    // PREVENCIÓN DE BUCLE DE LOGOUT
+    if (sessionStorage.getItem('logout_in_progress') === 'true') {
+      console.log('[Auth] Cierre de sesión detectado. Limpiando flag y evitando redirección.');
+      sessionStorage.removeItem('logout_in_progress');
+      return; 
+    }
+
     console.log('[Auth] Estado cambiado. Usuario:', user ? user.email : 'Ninguno');
     
     if (user) {
@@ -160,10 +167,20 @@
 
   // Logout
   window.handleLogout = () => {
-    firebase.auth().signOut().then(() => {
-      clearSession();
-      window.location.href = 'index.html';
-    });
+    console.log('[Auth] Cerrando sesión...');
+    // Ponemos un flag para evitar que onAuthStateChanged nos loguee de nuevo al redirigir
+    sessionStorage.setItem('logout_in_progress', 'true');
+    
+    firebase.auth().signOut()
+      .then(() => {
+        console.log('[Auth] Sesión cerrada en Firebase.');
+        clearSession();
+        window.location.href = 'index.html';
+      })
+      .catch((err) => {
+        console.error('[Auth] Error al cerrar sesión:', err);
+        sessionStorage.removeItem('logout_in_progress');
+      });
   };
 
 })();
