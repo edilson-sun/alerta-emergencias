@@ -99,6 +99,13 @@
       if (errEl) { errEl.textContent = 'Por favor completa todos los campos.'; errEl.classList.remove('hidden'); }
       return;
     }
+
+    const phoneRegex = /^\+?[0-9\s\-]{9,15}$/;
+    if (!phoneRegex.test(phone) || !phoneRegex.test(contactPhone)) {
+      if (errEl) { errEl.textContent = 'Ingresa números de teléfono válidos (9-15 dígitos).'; errEl.classList.remove('hidden'); }
+      return;
+    }
+
     if (errEl) errEl.classList.add('hidden');
     if (btn) btn.disabled = true;
     if (btnText) btnText.textContent = 'Guardando...';
@@ -181,10 +188,17 @@
     const contactPhone = document.getElementById('reg-contact-phone').value.trim();
     const emergencyContact = `${contactName} | ${contactPhone}`;
 
-    if (!contactName || !contactPhone) {
-      showError('register', 'Por favor ingresa el nombre y teléfono del contacto de emergencia.');
+    if (!contactName || !contactPhone || !phone) {
+      showError('register', 'Por favor ingresa todos los datos, incluyendo números de teléfono.');
       return;
     }
+
+    const phoneRegex = /^\+?[0-9\s\-]{9,15}$/;
+    if (!phoneRegex.test(phone) || !phoneRegex.test(contactPhone)) {
+      showError('register', 'Ingresa números de teléfono válidos (9-15 dígitos).');
+      return;
+    }
+
     if (isAdminEmail(email)) {
       showError('register', 'Este correo es reservado.');
       return;

@@ -58,7 +58,7 @@
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label for="reg-phone">Tu teléfono</label>
-              <input type="tel" id="reg-phone" class="form-input" placeholder="+593..." required />
+              <input type="tel" id="reg-phone" class="form-input" placeholder="+593..." required minlength="9" maxlength="15" pattern="^\+?[0-9\s\-]{9,15}$" title="Debe ser un número válido de 9 a 15 dígitos" />
             </div>
           </div>
           <!-- Contacto de emergencia: nombre y teléfono separados -->
@@ -70,7 +70,7 @@
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label for="reg-contact-phone">Teléfono del contacto</label>
-              <input type="tel" id="reg-contact-phone" class="form-input" placeholder="+593..." required />
+              <input type="tel" id="reg-contact-phone" class="form-input" placeholder="+593..." required minlength="9" maxlength="15" pattern="^\+?[0-9\s\-]{9,15}$" title="Debe ser un número válido de 9 a 15 dígitos" />
             </div>
           </div>
           <div class="form-group" style="margin-top:0.75rem">
@@ -117,7 +117,7 @@
 
       <div class="form-group">
         <label for="modal-phone">Tu número de teléfono</label>
-        <input type="tel" id="modal-phone" class="form-input" placeholder="+593..." required />
+        <input type="tel" id="modal-phone" class="form-input" placeholder="+593..." required minlength="9" maxlength="15" pattern="^\+?[0-9\s\-]{9,15}$" title="Debe ser un número válido de 9 a 15 dígitos" />
       </div>
 
       <p style="font-size:0.72rem;color:var(--grey-mid);margin:0 0 0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Contacto de emergencia</p>
@@ -128,7 +128,7 @@
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label for="modal-contact-phone">Teléfono</label>
-          <input type="tel" id="modal-contact-phone" class="form-input" placeholder="+593..." required />
+          <input type="tel" id="modal-contact-phone" class="form-input" placeholder="+593..." required minlength="9" maxlength="15" pattern="^\+?[0-9\s\-]{9,15}$" title="Debe ser un número válido de 9 a 15 dígitos" />
         </div>
       </div>
 
