@@ -93,12 +93,23 @@ app.patch('/api/users/:uid', verifyToken, async (req, res) => {
       );
       return res.json({ message: 'User created' });
     } else {
-      // Update
+      // Update — mapear camelCase → snake_case
+      const userFieldMap = {
+        email:            'email',
+        name:             'name',
+        phone:            'phone',
+        emergencyContact: 'emergency_contact',
+        role:             'role',
+      };
+      const ignored = new Set(['uid', 'id', 'createdAt', 'created_at']);
       const updates = [];
       const values = [];
       let i = 1;
       for (const [key, val] of Object.entries(fields)) {
-        updates.push(`${key} = $${i}`);
+        if (ignored.has(key)) continue;
+        const col = userFieldMap[key] || null;
+        if (!col) continue;
+        updates.push(`${col} = $${i}`);
         values.push(val);
         i++;
       }
@@ -163,14 +174,41 @@ app.patch('/api/alerts/:id', verifyToken, async (req, res) => {
       }
     }
 
+    // Mapa camelCase → snake_case para columnas de PostgreSQL
+    const fieldMap = {
+      status:           'status',
+      lat:              'lat',
+      lng:              'lng',
+      message:          'message',
+      type:             'type',
+      typeLabel:        'type_label',
+      emergencyContact: 'emergency_contact',
+      name:             'name',
+      phone:            'phone',
+      email:            'email',
+      uid:              'uid',
+    };
+    // Ignorar campos de tiempo (el servidor los controla) y campos desconocidos
+    const ignored = new Set(['updatedAt', 'updated_at', 'createdAt', 'created_at', 'timestamp', 'id', '_id']);
+
     const updates = [];
     const values = [];
     let i = 1;
 
     for (const [key, val] of Object.entries(fields)) {
-      updates.push(`${key} = $${i}`);
+      if (ignored.has(key)) continue;                 // saltar campos de tiempo/id
+      const col = fieldMap[key] || null;
+      if (!col) {
+        console.warn(`[PATCH] Campo desconocido ignorado: ${key}`);
+        continue;
+      }
+      updates.push(`${col} = $${i}`);
       values.push(val);
       i++;
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No hay campos válidos para actualizar' });
     }
     updates.push('updated_at = NOW()');
     values.push(id);
