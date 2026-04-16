@@ -2,7 +2,7 @@
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAvv67WmimCBYS8tda6p_NTWUq8x6M_Y-w",
-  authDomain: "emergencias-b16bd.web.app", // Match hosting for better PWA redirect stability
+  authDomain: "emergencias-b16bd.firebaseapp.com", // Default domain to avoid redirect_uri_mismatch
   projectId: "emergencias-b16bd",
   storageBucket: "emergencias-b16bd.appspot.com",
   messagingSenderId: "367150772719",
