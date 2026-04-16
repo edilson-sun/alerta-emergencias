@@ -16,16 +16,18 @@ app.use(cors());
 app.use(express.json());
 
 // === MIDDLEWARE DE AUTENTICACIÓN (FIREBASE) ===
-// Valida el token del frontend usando la API de Google
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 async function verifyToken(req, res, next) {
-  const token = req.headers.authorization?.split('Bearer ')[1];
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.split('Bearer ')[1] : null;
+
   if (!token) return res.status(401).json({ error: 'Token requerido' });
   
   if (!FIREBASE_API_KEY) {
     console.warn('Falta FIREBASE_API_KEY, permitiendo paso temporal (MODO DEV)');
-    req.user = { localId: 'dev_user', email: 'dev@test.com' };
+    req.user = { localId: 'dev_user', email: ADMIN_EMAIL };
     return next();
   }
 
@@ -42,6 +44,16 @@ async function verifyToken(req, res, next) {
   } catch (error) {
     return res.status(403).json({ error: 'No autorizado' });
   }
+}
+
+// Middleware para restringir solo al administrador
+function restrictToAdmin(req, res, next) {
+  if (!req.user || !req.user.email) return res.status(403).json({ error: 'No identificado' });
+  
+  if (req.user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    return res.status(403).json({ error: 'Acceso denegado: Se requieren permisos de administrador' });
+  }
+  next();
 }
 
 // === RUTAS PARA USUARIOS ===
@@ -109,7 +121,7 @@ app.post('/api/alerts', verifyToken, async (req, res) => {
 });
 
 // Listar alertas (admin)
-app.get('/api/alerts', verifyToken, async (req, res) => {
+app.get('/api/alerts', verifyToken, restrictToAdmin, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM alerts ORDER BY created_at DESC');
     res.json(result.rows);
@@ -118,8 +130,8 @@ app.get('/api/alerts', verifyToken, async (req, res) => {
   }
 });
 
-// Actualizar alerta (coordenadas o resolver)
-app.patch('/api/alerts/:id', verifyToken, async (req, res) => {
+// Actualizar alerta (coordenadas o resolver) - solo admin puede resolver
+app.patch('/api/alerts/:id', verifyToken, restrictToAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const fields = req.body;
