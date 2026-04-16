@@ -204,6 +204,7 @@
     const badge = alert.status === 'in_progress'
       ? '<span class="badge badge-progress">En proceso</span>'
       : '<span class="badge badge-active">Activa</span>';
+    const ec = parseEmergencyContact(alert.emergencyContact);
     return `
       <div class="alert-card ${alert.status}" id="card-${alert._id}" onclick="focusAlert('${alert._id}')">
         <div class="alert-card-header">
@@ -213,11 +214,13 @@
         ${badge}
         <div class="alert-type-label" style="margin-top:0.4rem">${getTypeEmoji(alert.type)} ${escHtml(alert.typeLabel || alert.type)}</div>
         ${alert.lat ? `<div class="alert-coords">📍 ${parseFloat(alert.lat).toFixed(5)}, ${parseFloat(alert.lng).toFixed(5)}</div>` : ''}
+        ${alert.phone ? `<div class="alert-coords" style="margin-top:0.25rem">📞 Usuario: <a href="tel:${escHtml(alert.phone)}" style="color:var(--red-light)" onclick="event.stopPropagation()">${escHtml(alert.phone)}</a></div>` : ''}
+        ${ec.name ? `<div class="alert-coords" style="margin-top:0.25rem;color:var(--warning)">🆘 Contacto: <strong>${escHtml(ec.name)}</strong>${ec.phone ? ` — <a href="tel:${escHtml(ec.phone)}" style="color:var(--warning)" onclick="event.stopPropagation()">${escHtml(ec.phone)}</a>` : ''}</div>` : ''}
         ${alert.message ? `<div class="alert-message">"${escHtml(alert.message)}"</div>` : ''}
         <div class="alert-actions">
-          ${alert.phone ? `<a href="tel:${escHtml(alert.phone)}" class="btn btn-secondary btn-sm" title="Llamar">📞 ${escHtml(alert.phone)}</a>` : ''}
           ${alert.status !== 'in_progress' ? `<button class="btn btn-warning btn-sm" onclick="updateStatus(event,'${alert._id}','in_progress')">⏳ En proceso</button>` : ''}
           <button class="btn btn-success btn-sm" onclick="updateStatus(event,'${alert._id}','attended')">✅ Atendida</button>
+          <button class="btn btn-secondary btn-sm" onclick="updateStatus(event,'${alert._id}','cancelled')" style="background:rgba(149,165,166,0.15);border-color:rgba(149,165,166,0.3);color:#95a5a6">✕ Cancelar</button>
         </div>
       </div>`;
   }
@@ -351,6 +354,16 @@
   function escHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  // Parsear contacto de emergencia: puede ser "Nombre | Teléfono" o solo un string
+  function parseEmergencyContact(ec) {
+    if (!ec) return { name: '', phone: '' };
+    if (ec.includes(' | ')) {
+      const parts = ec.split(' | ');
+      return { name: parts[0] || '', phone: parts[1] || '' };
+    }
+    // Formato antiguo: todo en un string
+    return { name: ec, phone: '' };
   }
 
   // ---- INIT ----

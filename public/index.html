@@ -38,7 +38,6 @@
           </div>
           <button type="submit" class="btn btn-primary btn-full" id="login-btn">
             <span id="login-btn-text">Ingresar</span>
-            <span id="login-spinner" class="hidden">⏳</span>
           </button>
           
           <div class="divider">ó</div>
@@ -58,15 +57,23 @@
               <input type="text" id="reg-name" class="form-input" placeholder="Juan Pérez" required />
             </div>
             <div class="form-group" style="margin-bottom:0">
-              <label for="reg-phone">Teléfono</label>
+              <label for="reg-phone">Tu teléfono</label>
               <input type="tel" id="reg-phone" class="form-input" placeholder="+593..." required />
             </div>
           </div>
-          <div class="form-group" style="margin-top:0.75rem">
-            <label for="reg-contact">Contacto de emergencia</label>
-            <input type="text" id="reg-contact" class="form-input" placeholder="Nombre y teléfono" required />
+          <!-- Contacto de emergencia: nombre y teléfono separados -->
+          <p style="font-size:0.72rem;color:var(--grey-mid);margin:0.75rem 0 0.4rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Contacto de emergencia</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+            <div class="form-group" style="margin-bottom:0">
+              <label for="reg-contact-name">Nombre del contacto</label>
+              <input type="text" id="reg-contact-name" class="form-input" placeholder="Mamá / Papá..." required />
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label for="reg-contact-phone">Teléfono del contacto</label>
+              <input type="tel" id="reg-contact-phone" class="form-input" placeholder="+593..." required />
+            </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-top:0.75rem">
             <label for="reg-email">Correo electrónico</label>
             <input type="email" id="reg-email" class="form-input" placeholder="tu@correo.com" required autocomplete="email" />
           </div>
@@ -89,10 +96,52 @@
     </div>
   </div>
 
+  <!-- MODAL: Completar perfil Google (se muestra si faltan datos de emergencia) -->
+  <div id="profile-modal" style="
+    display:none; position:fixed; inset:0; z-index:10000;
+    background:rgba(0,0,0,0.85); backdrop-filter:blur(6px);
+    align-items:center; justify-content:center; padding:1rem;
+  ">
+    <div style="
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:1.25rem; padding:2rem; width:100%; max-width:400px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    ">
+      <div style="text-align:center;margin-bottom:1.5rem">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem">🆘</div>
+        <h2 style="margin:0;font-size:1.2rem;color:var(--white)">Completa tu perfil</h2>
+        <p style="color:var(--grey-mid);font-size:0.85rem;margin-top:0.4rem">Para poder alertarte a ti y a tu contacto en caso de emergencia, necesitamos estos datos.</p>
+      </div>
+
+      <div id="profile-modal-error" class="auth-error hidden" style="margin-bottom:1rem"></div>
+
+      <div class="form-group">
+        <label for="modal-phone">Tu número de teléfono</label>
+        <input type="tel" id="modal-phone" class="form-input" placeholder="+593..." required />
+      </div>
+
+      <p style="font-size:0.72rem;color:var(--grey-mid);margin:0 0 0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Contacto de emergencia</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem">
+        <div class="form-group" style="margin-bottom:0">
+          <label for="modal-contact-name">Nombre</label>
+          <input type="text" id="modal-contact-name" class="form-input" placeholder="Mamá / Papá..." required />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label for="modal-contact-phone">Teléfono</label>
+          <input type="tel" id="modal-contact-phone" class="form-input" placeholder="+593..." required />
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="modal-save-btn" onclick="handleProfileModal()">
+        <span id="modal-save-text">Guardar y continuar →</span>
+      </button>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="js/firebase-config.js?v=3.3"></script>
-  <script src="js/auth.js?v=3.3"></script>
+  <script src="js/firebase-config.js?v=3.6"></script>
+  <script src="js/auth.js?v=3.6"></script>
   <script src="js/pwa.js"></script>
 </body>
 </html>
