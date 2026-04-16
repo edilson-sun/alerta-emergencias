@@ -142,11 +142,26 @@ app.get('/api/alerts', verifyToken, restrictToAdmin, async (req, res) => {
   }
 });
 
-// Actualizar alerta (coordenadas o resolver) - solo admin puede resolver
-app.patch('/api/alerts/:id', verifyToken, restrictToAdmin, async (req, res) => {
+app.patch('/api/alerts/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const fields = req.body;
+    const { email: userEmail, localId: userUid } = req.user;
+    const isAdmin = userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+    // Validar permiso: Admin o Dueño
+    if (!isAdmin) {
+      const check = await pool.query('SELECT uid FROM alerts WHERE id = $1', [id]);
+      if (check.rows.length === 0) return res.status(404).json({ error: 'Alerta no encontrada' });
+      if (check.rows[0].uid !== userUid) {
+        return res.status(403).json({ error: 'No tienes permiso para actualizar esta alerta' });
+      }
+      // Un usuario normal solo puede cancelar o mover su propia alerta
+      if (fields.status && fields.status !== 'cancelled' && fields.status !== 'active') {
+        return res.status(403).json({ error: 'Solo el administrador puede cambiar el estado a ' + fields.status });
+      }
+    }
+
     const updates = [];
     const values = [];
     let i = 1;

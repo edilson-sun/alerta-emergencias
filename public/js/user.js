@@ -2,6 +2,7 @@
 
 (function () {
   'use strict';
+  console.log('--- AlertaEmergencia User Script V3.3 ---');
 
   // ---- Guard: require session ----
   const session = getSession();
