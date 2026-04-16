@@ -1,0 +1,189 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Configuración Neon (PostgreSQL)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+app.use(cors());
+app.use(express.json());
+
+// === MIDDLEWARE DE AUTENTICACIÓN (FIREBASE) ===
+// Valida el token del frontend usando la API de Google
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+
+async function verifyToken(req, res, next) {
+  const token = req.headers.authorization?.split('Bearer ')[1];
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+  
+  if (!FIREBASE_API_KEY) {
+    console.warn('Falta FIREBASE_API_KEY, permitiendo paso temporal (MODO DEV)');
+    req.user = { localId: 'dev_user', email: 'dev@test.com' };
+    return next();
+  }
+
+  try {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: token })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.users) throw new Error('Token inválido');
+    req.user = data.users[0]; // req.user.localId, req.user.email
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'No autorizado' });
+  }
+}
+
+// === RUTAS PARA USUARIOS ===
+app.get('/api/users/:uid', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const result = await pool.query('SELECT * FROM users WHERE uid = $1', [uid]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/users/:uid', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const fields = req.body;
+    
+    // Check if exists
+    const check = await pool.query('SELECT uid FROM users WHERE uid = $1', [uid]);
+    if (check.rows.length === 0) {
+      // Create (Insert)
+      await pool.query(
+        'INSERT INTO users (uid, email, name, phone, emergency_contact, role) VALUES ($1, $2, $3, $4, $5, $6)',
+        [uid, fields.email, fields.name || '', fields.phone || '', fields.emergencyContact || '', fields.role || 'user']
+      );
+      return res.json({ message: 'User created' });
+    } else {
+      // Update
+      const updates = [];
+      const values = [];
+      let i = 1;
+      for (const [key, val] of Object.entries(fields)) {
+        updates.push(`${key} = $${i}`);
+        values.push(val);
+        i++;
+      }
+      values.push(uid);
+      if (updates.length > 0) {
+        await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE uid = $${i}`, values);
+      }
+      return res.json({ message: 'User updated' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// === RUTAS PARA ALERTAS ===
+// Crear nueva alerta
+app.post('/api/alerts', verifyToken, async (req, res) => {
+  try {
+    const { uid, email, name, phone, emergencyContact, type, typeLabel, message, lat, lng } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO alerts (uid, email, name, phone, emergency_contact, type, type_label, message, lat, lng, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active') RETURNING id`,
+      [uid, email, name, phone, emergencyContact, type, typeLabel, message, lat, lng]
+    );
+    res.json({ id: result.rows[0].id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Listar alertas (admin)
+app.get('/api/alerts', verifyToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM alerts ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Actualizar alerta (coordenadas o resolver)
+app.patch('/api/alerts/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const fields = req.body;
+    const updates = [];
+    const values = [];
+    let i = 1;
+
+    for (const [key, val] of Object.entries(fields)) {
+      updates.push(`${key} = $${i}`);
+      values.push(val);
+      i++;
+    }
+    updates.push('updated_at = NOW()');
+    values.push(id);
+    
+    const query = `UPDATE alerts SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`;
+    const result = await pool.query(query, values);
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Script para inicializar tablas automáticamente
+async function initDB() {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        uid VARCHAR(255) PRIMARY KEY,
+        email VARCHAR(255),
+        name VARCHAR(255),
+        phone VARCHAR(50),
+        emergency_contact VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS alerts (
+        id SERIAL PRIMARY KEY,
+        uid VARCHAR(255),
+        email VARCHAR(255),
+        name VARCHAR(255),
+        phone VARCHAR(50),
+        emergency_contact VARCHAR(255),
+        type VARCHAR(100),
+        type_label VARCHAR(255),
+        message TEXT,
+        lat DECIMAL(10, 8),
+        lng DECIMAL(11, 8),
+        status VARCHAR(50) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('Tablas preparadas en Neon PostgreSQL');
+  } catch (error) {
+    console.error('Error al iniciar base de datos:', error.message);
+  }
+}
+
+app.listen(port, async () => {
+  console.log(`Backend server corriendo en http://localhost:${port}`);
+  await initDB();
+});

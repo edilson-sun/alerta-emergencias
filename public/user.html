@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AlertaEmergencia — SOS</title>
+  <meta name="description" content="Envía una alerta de emergencia con tu ubicación GPS en tiempo real." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🆘</text></svg>" />
+  <style>
+    /* Extra mobile-first tweaks for user page */
+    body { touch-action: manipulation; }
+    .user-main { padding-bottom: 3rem; }
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--grey-mid);
+      margin-bottom: 0.75rem;
+    }
+    .tracking-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--grey-mid);
+    }
+    .tracking-bar .track-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--grey);
+    }
+    .tracking-bar.active-tracking .track-dot {
+      background: var(--warning);
+      box-shadow: 0 0 6px var(--warning);
+      animation: pulse-btn 1.5s infinite;
+    }
+    .tracking-bar.active-tracking { color: var(--warning); }
+  </style>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a252f" />
+</head>
+<body>
+  <div class="user-bg">
+    <!-- HEADER -->
+    <header class="user-header">
+      <div class="logo">🆘 <span>Alerta</span>Emergencia</div>
+      <div style="display:flex;align-items:center;gap:1rem">
+        <div class="user-info-bar">
+          <div class="gps-dot searching" id="gps-status-dot"></div>
+          <span id="gps-status-text">Buscando GPS...</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="handleLogout()">Salir</button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="user-main">
+
+      <!-- USER GREETING -->
+      <div style="text-align:center;width:100%;max-width:380px">
+        <p style="color:var(--grey-mid);font-size:0.88rem">Hola, <strong id="user-display-name" style="color:var(--white)">Usuario</strong></p>
+      </div>
+
+      <!-- STATUS BAR -->
+      <div class="status-bar warning" id="status-bar">
+        <span>📡</span>
+        <span id="status-text">Obteniendo tu ubicación GPS...</span>
+      </div>
+
+      <!-- EMERGENCY TYPE SELECTION -->
+      <div style="width:100%;max-width:380px">
+        <p class="section-title">Tipo de emergencia</p>
+        <div class="emergency-types">
+          <button class="type-btn" id="type-fisica" onclick="selectType('fisica', this)">
+            <span class="type-icon">⚠️</span>
+            Peligro físico
+          </button>
+          <button class="type-btn" id="type-accidente" onclick="selectType('accidente', this)">
+            <span class="type-icon">🚗</span>
+            Accidente
+          </button>
+          <button class="type-btn" id="type-medica" onclick="selectType('medica', this)">
+            <span class="type-icon">🏥</span>
+            Emergencia médica
+          </button>
+          <button class="type-btn" id="type-otro" onclick="selectType('otro', this)">
+            <span class="type-icon">🔴</span>
+            Otro
+          </button>
+        </div>
+      </div>
+
+      <!-- SOS BUTTON ZONE -->
+      <div class="sos-zone">
+        <p class="section-title" style="text-align:center">Presiona para enviar alerta</p>
+        <div class="sos-wrapper" id="sos-wrapper">
+          <div class="sos-ring" id="sos-ring"></div>
+          <div class="sos-ring2" id="sos-ring2"></div>
+          <button class="sos-btn" id="sos-btn" onclick="handleSOS()">
+            <span id="sos-label">SOS</span>
+            <span class="sos-sub" id="sos-sub">ENVIAR ALERTA</span>
+          </button>
+        </div>
+
+        <!-- Tracking bar (shown when alert is active) -->
+        <div class="tracking-bar" id="tracking-bar">
+          <div class="track-dot"></div>
+          <span id="tracking-text">Sin seguimiento activo</span>
+        </div>
+
+        <!-- Cancel button (shown when alert is active) -->
+        <button class="cancel-alert-btn hidden" id="cancel-btn" onclick="handleCancelAlert()">
+          ✕ Cancelar alerta activa
+        </button>
+      </div>
+
+      <!-- OPTIONAL MESSAGE -->
+      <div class="optional-msg">
+        <p class="section-title">Mensaje adicional (opcional)</p>
+        <textarea id="msg-input" class="form-input" placeholder="Describe la situación brevemente..." maxlength="300"></textarea>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/user.js"></script>
+  <script src="js/pwa.js"></script>
+</body>
+</html>

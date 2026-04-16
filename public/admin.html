@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>AlertaEmergencia — Panel de Control</title>
+  <meta name="description" content="Panel de control de alertas de emergencia para administradores." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a252f" />
+</head>
+<body>
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <div class="admin-layout">
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar">
+      <div class="admin-header">
+        <h1>🛡️ Panel Admin</h1>
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          <div class="live-badge">
+            <div class="live-dot"></div>
+            EN VIVO
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="handleLogout()">Salir</button>
+        </div>
+      </div>
+
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" id="tab-active" onclick="switchTab('active')">
+          🆘 Activas <span class="alert-count-badge" id="active-count">0</span>
+        </button>
+        <button class="admin-tab-btn" id="tab-history" onclick="switchTab('history')">
+          📋 Historial
+        </button>
+      </div>
+
+      <!-- ACTIVE ALERTS -->
+      <div class="admin-content" id="panel-active">
+        <div class="empty-state" id="empty-active">
+          <div class="empty-icon">✅</div>
+          <p>Sin alertas activas</p>
+          <p class="text-small" style="margin-top:0.5rem">Las nuevas alertas aparecerán aquí automáticamente</p>
+        </div>
+        <div id="alerts-list"></div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="admin-content hidden" id="panel-history">
+        <div class="empty-state" id="empty-history">
+          <div class="empty-icon">📂</div>
+          <p>Sin historial todavía</p>
+        </div>
+        <div id="history-list"></div>
+      </div>
+    </aside>
+
+    <!-- MAP AREA -->
+    <main class="admin-map-area">
+      <div id="admin-map"></div>
+      <div class="map-stats-bar">
+        <div class="map-stat-pill">
+          <span style="color:var(--red-light)">🔴</span>
+          <span id="stat-active">0 activas</span>
+        </div>
+        <div class="map-stat-pill">
+          <span style="color:var(--success)">✅</span>
+          <span id="stat-done">0 atendidas</span>
+        </div>
+        <div class="map-stat-pill">
+          <span>👤</span>
+          <span id="admin-name-display">Admin</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Alert sound (generated beep) -->
+  <audio id="alert-sound" preload="auto">
+    <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqHhYWGhoODg4KFiouLioqKiomJiYiIiIiIiIiHiIiJiYqKioqKioqKioqJiYiIh4eHh4eHhoaGhoeHiIiJiYqKioqKiYmJiIiIiIiHiIiJiYqKioqJiYmIiIiIiIeHiIiJiYqKiomJiImHiIiJiYqKiYmJiIiIiIiIhoeHiImKi4uLi4qKiomJiomJiYiIiIiHh4eHiIiJiYqKiomJiYiIiIiIh4iIiYmKioqJiYmIiIiIiIiHiIiJiYqKioqJiYmIiIiIiIiHiIiJiYqKioqJiYmIiIiHh4eHiIiJiYqKiYmJiIiIiIiIiIiJiYqKi4uMjIyMjIuLiomJiYiIiImJiYqKiouLi4qKiomJiYiIiIiJiYqKi4uMjIyMjIuLiomJiYiIiIiJiYqKiouLiomJiYiIiIiHiIiJiYqKiomJiYiIiIiIh4iIiYmKioqJiYmIiIiIiIiHiIiJiYqKioqJiYmIiIiIiIiHiIiJiYqKioqKiomJiYiIiImJiYmJiYiIiIeHiIiJiYqKiomJiYiIiIiIiIiIiYmKiouLi4qKiomJiYiIiImJiouLi4uMjIyMi4qKiomJiImJiYqKiouLi4qKiomJiYiIiIiJiYqKiouLi4qKiYmJiIiIiImJiYqKiouLi4qKiomJiYiIiIiJiouLi4uMjIyLi4qKiomJiImJiYqKiouLi4qKiomJiYiIiIiJiYqKiouLi4qKiomJiYiIiIiJiYqKiouLi4qKiomJiYiIiIiJiYqKiouLi4uKiomJiYiIiIiJiYqJiomJiYiIiIiIiImJiYqKiouLi4qKiomJiYiIiIiJiYqKiouLi4qKiomJiYiIiIiIiYqKiouLi4qKiomJiYiIiA==" type="audio/wav">
+  </audio>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/pwa.js"></script>
+</body>
+</html>

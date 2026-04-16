@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlertaEmergencia — Acceso</title>
+  <meta name="description" content="Sistema de alertas de emergencia en tiempo real. Inicia sesión o regístrate para acceder." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🆘</text></svg>" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a252f" />
+</head>
+<body>
+  <div class="auth-bg">
+    <div class="auth-container">
+      <div class="auth-logo">
+        <div class="logo-icon">🆘</div>
+        <h1>Alerta<span style="color:var(--red-light)">Emergencia</span></h1>
+        <p>Sistema de respuesta en tiempo real</p>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <div class="auth-tab active" id="tab-login" onclick="showTab('login')">Iniciar Sesión</div>
+          <div class="auth-tab" id="tab-register" onclick="showTab('register')">Registrarse</div>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form class="auth-form" id="form-login" onsubmit="handleLogin(event)">
+          <div id="login-error" class="auth-error hidden"></div>
+          <div class="form-group">
+            <label for="login-email">Correo electrónico</label>
+            <input type="email" id="login-email" class="form-input" placeholder="tu@correo.com" required autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Contraseña</label>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+            <span id="login-btn-text">Ingresar</span>
+            <span id="login-spinner" class="hidden">⏳</span>
+          </button>
+          
+          <div class="divider">ó</div>
+          
+          <button type="button" class="btn btn-secondary btn-full" id="google-btn" onclick="handleGoogleLogin()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width:18px;height:18px;margin-right:8px;">
+            Continuar con Google
+          </button>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form class="auth-form hidden" id="form-register" onsubmit="handleRegister(event)">
+          <div id="register-error" class="auth-error hidden"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+            <div class="form-group" style="margin-bottom:0">
+              <label for="reg-name">Nombre completo</label>
+              <input type="text" id="reg-name" class="form-input" placeholder="Juan Pérez" required />
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label for="reg-phone">Teléfono</label>
+              <input type="tel" id="reg-phone" class="form-input" placeholder="+593..." required />
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:0.75rem">
+            <label for="reg-contact">Contacto de emergencia</label>
+            <input type="text" id="reg-contact" class="form-input" placeholder="Nombre y teléfono" required />
+          </div>
+          <div class="form-group">
+            <label for="reg-email">Correo electrónico</label>
+            <input type="email" id="reg-email" class="form-input" placeholder="tu@correo.com" required autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="reg-password">Contraseña (mínimo 6 caracteres)</label>
+            <input type="password" id="reg-password" class="form-input" placeholder="••••••••" required minlength="6" autocomplete="new-password" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="register-btn">
+            <span id="register-btn-text">Crear cuenta</span>
+          </button>
+          <p style="font-size:0.75rem;color:var(--grey-mid);margin-top:0.75rem;text-align:center;">
+            ⚠️ Las cuentas de administrador son asignadas directamente por el sistema.
+          </p>
+        </form>
+      </div>
+
+      <p style="text-align:center;font-size:0.75rem;color:var(--grey-mid);margin-top:1.5rem;">
+        Sistema de emergencias · Uso oficial únicamente
+      </p>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/pwa.js"></script>
+</body>
+</html>
