@@ -63,16 +63,8 @@
     }
   });
 
-  // 3. Handle Google Redirect Result
-  // This captures any errors if the redirect flow fails
-  firebase.auth().getRedirectResult().then(result => {
-    if (result && result.user) {
-      console.log('[Auth] Éxito post-redirección:', result.user.email);
-    }
-  }).catch(err => {
-    console.error('[Auth] Error en resultado de Google:', err.code, err.message);
-    showError('login', 'Error de Google: ' + err.message);
-  });
+  // 3. Handle Google Popup Result
+  // (Note: onAuthStateChanged handles most cases, but we catch errors in the handlers below)
 
   // --- UI Logic ---
   window.showTab = (tab) => {
@@ -158,11 +150,24 @@
     }
   };
 
-  // Google Login (Redirect)
+  // Google Login (Popup)
   window.handleGoogleLogin = () => {
-    console.log('[Auth] Iniciando flujo Google Redirect...');
+    console.log('[Auth] Iniciando flujo Google Popup...');
     const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithRedirect(provider);
+    
+    firebase.auth().signInWithPopup(provider)
+      .then((result) => {
+        console.log('[Auth] Éxito post-popup:', result.user.email);
+        // onAuthStateChanged se encargará de la redirección
+      })
+      .catch((err) => {
+        console.error('[Auth] Error en Popup Google:', err.code, err.message);
+        if (err.code === 'auth/popup-blocked') {
+          alert('Por favor, permite las ventanas emergentes (popups) para iniciar sesión con Google.');
+        } else {
+          showError('login', 'Error de Google: ' + err.message);
+        }
+      });
   };
 
   // Logout Unificado
