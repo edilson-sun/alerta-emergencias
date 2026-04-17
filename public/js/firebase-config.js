@@ -10,7 +10,7 @@ const FIREBASE_CONFIG = {
 };
 
 // Backend URL on Render
-const BACKEND_URL = "https://alerta-emergencias.onrender.com";
+const BACKEND_URL = "https://alerta-emergencias-1.onrender.com";
 
 // --- Session Utility ---
 function saveSession(data) { localStorage.setItem('user_session', JSON.stringify(data)); }
