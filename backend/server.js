@@ -27,7 +27,7 @@ app.use(express.json());
 
 // === MIDDLEWARE DE AUTENTICACIÓN (FIREBASE) ===
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_EMAILS = (process.env.ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase());
 
 async function verifyToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -37,7 +37,7 @@ async function verifyToken(req, res, next) {
   
   if (!FIREBASE_API_KEY) {
     console.warn('Falta FIREBASE_API_KEY, permitiendo paso temporal (MODO DEV)');
-    req.user = { localId: 'dev_user', email: ADMIN_EMAIL };
+    req.user = { localId: 'dev_user', email: ADMIN_EMAILS[0] || 'dev_admin@example.com' };
     return next();
   }
 
@@ -60,7 +60,7 @@ async function verifyToken(req, res, next) {
 function restrictToAdmin(req, res, next) {
   if (!req.user || !req.user.email) return res.status(403).json({ error: 'No identificado' });
   
-  if (req.user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+  if (!ADMIN_EMAILS.includes(req.user.email.toLowerCase())) {
     return res.status(403).json({ error: 'Acceso denegado: Se requieren permisos de administrador' });
   }
   next();
@@ -166,7 +166,7 @@ app.patch('/api/alerts/:id', verifyToken, async (req, res) => {
     const { id } = req.params;
     const fields = req.body;
     const { email: userEmail, localId: userUid } = req.user;
-    const isAdmin = userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    const isAdmin = ADMIN_EMAILS.includes(userEmail.toLowerCase());
 
     // Validar permiso: Admin o Dueño
     if (!isAdmin) {
